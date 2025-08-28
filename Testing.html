@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Hello Jana – Flowers</title>
+  <style>
+    :root {
+      --bg1: #fde6f5;
+      --bg2: #e8f7ff;
+      --text: #222222;
+      --accent: #ff7ab6;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      height: 100%;
+      margin: 0;
+    }
+    body {
+      font-family: ui-rounded, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      background: radial-gradient(1200px 800px at 20% 10%, var(--bg1), transparent 70%),
+                  radial-gradient(1000px 700px at 80% 90%, var(--bg2), transparent 70%),
+                  linear-gradient(180deg, #ffffff, #f8fbff 60%, #fff0f7);
+      overflow: hidden; /* keep blossoms inside */
+      -webkit-tap-highlight-color: transparent;
+      -webkit-user-select: none; user-select: none;
+    }
+
+    .center {
+      position: absolute; inset: 0;
+      display: grid; place-items: center;
+      padding: 24px;
+      text-align: center;
+    }
+    h1 {
+      margin: 0;
+      font-size: clamp(40px, 9vw, 96px);
+      line-height: 1.05;
+      letter-spacing: 0.5px;
+      background: linear-gradient(180deg, #111, #444);
+      -webkit-background-clip: text; background-clip: text;
+      color: transparent;
+      text-shadow: 0 1px 0 rgba(255,255,255,0.5);
+    }
+    .subtitle {
+      margin-top: 10px;
+      font-size: clamp(14px, 3.2vw, 18px);
+      color: #555;
+    }
+
+    /* Blossom */
+    .blossom {
+      position: absolute;
+      left: 0; top: 0;
+      font-size: 24px; /* will be scaled */
+      will-change: transform, opacity;
+      pointer-events: none;
+      filter: drop-shadow(0 6px 8px rgba(0,0,0,0.12));
+      animation: floatUp 1.8s ease-out forwards;
+    }
+
+    @keyframes floatUp {
+      0% { transform: translate(var(--x), var(--y)) scale(var(--s)) rotate(0deg); opacity: 0; }
+      10% { opacity: 1; }
+      100% { transform: translate(calc(var(--x) + var(--dx)), calc(var(--y) - var(--rise))) scale(var(--s)) rotate(var(--rot)); opacity: 0; }
+    }
+
+    /* Reduce motion for accessibility */
+    @media (prefers-reduced-motion: reduce) {
+      .blossom { animation: none; opacity: 1; }
+    }
+
+    /* Gentle pulse on the headline */
+    @keyframes breathe {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.02); }
+    }
+    .breathe { animation: breathe 4s ease-in-out infinite; }
+
+    /* Hint */
+    .hint {
+      position: absolute; bottom: 16px; left: 0; right: 0;
+      text-align: center; font-size: 12px; color: #666;
+      opacity: 0.9;
+    }
+  </style>
+</head>
+<body>
+  <div class="center">
+    <div>
+      <h1 class="breathe">Hello Jana</h1>
+      <div class="subtitle">Tap anywhere to pop flowers ✨</div>
+    </div>
+  </div>
+  <div class="hint">Works on iPhone and Android • No install needed</div>
+
+  <script>
+    (function () {
+      const flowers = ["🌸", "🌼", "🌺", "🌷", "💮", "🌻"];
+      const body = document.body;
+      const MAX_ON_SCREEN = 120; // soft cap
+
+      function rand(min, max) { return Math.random() * (max - min) + min; }
+      function choice(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+
+      function spawnBlossom(x, y) {
+        const el = document.createElement('span');
+        el.className = 'blossom';
+        el.textContent = choice(flowers);
+
+        // Randomize trajectory and size
+        const size = rand(0.9, 1.8).toFixed(2);
+        const dx = rand(-80, 80).toFixed(1) + 'px';
+        const rise = rand(120, 240).toFixed(1) + 'px';
+        const rot = (Math.random() < 0.5 ? '-' : '') + rand(90, 360).toFixed(0) + 'deg';
+
+        // Start offsets relative to element's own origin
+        el.style.setProperty('--x', x + 'px');
+        el.style.setProperty('--y', y + 'px');
+        el.style.setProperty('--dx', dx);
+        el.style.setProperty('--rise', rise);
+        el.style.setProperty('--s', size);
+        el.style.setProperty('--rot', rot);
+
+        // Slight random delay
+        el.style.animationDelay = (Math.random() * 120) + 'ms';
+
+        body.appendChild(el);
+        el.addEventListener('animationend', () => el.remove());
+      }
+
+      function burst(x, y, count = 18) {
+        const existing = document.querySelectorAll('.blossom').length;
+        const allowed = Math.max(0, MAX_ON_SCREEN - existing);
+        const toMake = Math.min(allowed, count);
+        for (let i = 0; i < toMake; i++) {
+          const jitterX = rand(-16, 16);
+          const jitterY = rand(-12, 12);
+          spawnBlossom(x + jitterX, y + jitterY);
+        }
+      }
+
+      // Convert page coordinates to CSS translate origin
+      function handlePointer(evt) {
+        const touch = evt.touches ? evt.touches[0] : evt;
+        burst(touch.clientX, touch.clientY, 24);
+      }
+
+      // Initial gentle sprinkle
+      function introSprinkle() {
+        const { innerWidth: w, innerHeight: h } = window;
+        for (let i = 0; i < 36; i++) {
+          const x = rand(w * 0.15, w * 0.85);
+          const y = rand(h * 0.25, h * 0.75);
+          setTimeout(() => spawnBlossom(x, y), rand(0, 600));
+        }
+      }
+
+      // Event listeners for mobile + desktop
+      window.addEventListener('pointerdown', handlePointer, { passive: true });
+      window.addEventListener('touchstart', handlePointer, { passive: true });
+
+      // Prevent iOS double-tap zoom from interfering
+      let lastTouch = 0;
+      window.addEventListener('touchend', (e) => {
+        const now = Date.now();
+        if (now - lastTouch < 300) e.preventDefault();
+        lastTouch = now;
+      }, { passive: false });
+
+      // Kick things off
+      window.addEventListener('load', introSprinkle);
+    })();
+  </script>
+</body>
+</html>
